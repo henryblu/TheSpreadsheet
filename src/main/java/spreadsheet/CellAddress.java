@@ -1,3 +1,4 @@
+package spreadsheet;
 public class CellAddress {
     private int row;
     private int column;

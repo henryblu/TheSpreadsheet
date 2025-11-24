@@ -1,4 +1,4 @@
-package formula;
+package spreadsheet.formula;
 public enum TokenType {
     NUMBER,
     PLUS,

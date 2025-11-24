@@ -1,4 +1,4 @@
-package exceptions;
+package spreadsheet.exceptions;
 
 public class FormulaException extends RuntimeException {
     public FormulaException(String message) {

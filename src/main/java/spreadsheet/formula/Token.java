@@ -1,4 +1,4 @@
-package formula;
+package spreadsheet.formula;
 public class Token {
     private TokenType type;
     private double value;

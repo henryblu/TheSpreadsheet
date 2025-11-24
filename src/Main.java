@@ -8,6 +8,7 @@ public class Main {
         sheet.setCellContent(new CellAddress(1, 2), "world");
         sheet.setCellContent(new CellAddress(1, 3), "123");
         sheet.setCellContent(new CellAddress(2, 1), "test");
+        sheet.setCellContent(new CellAddress(2, 2), " =1+2*3/6  ");
 
         sheet.saveToFile("../data/sample.s2v");
 
@@ -18,6 +19,7 @@ public class Main {
         System.out.println(loaded.getCellContent(new CellAddress(1,2)));
         System.out.println(loaded.getCellContent(new CellAddress(1,3)));
         System.out.println(loaded.getCellContent(new CellAddress(2,1)));
+        System.out.println("Formula preview: " + loaded.getCellDisplayValue(new CellAddress(2,2)));
     }
 
 }

@@ -39,6 +39,14 @@ public class Spreadsheet {
         return cell.getContent();
     }
 
+    public String getCellDisplayValue(CellAddress address) {
+        Cell cell = cells.get(address);
+        if (cell == null) {
+            return "";
+        }
+        return cell.getDisplayValue();
+    }
+
     public void loadFromFile(String filename) throws IOException {
         cells.clear();
 

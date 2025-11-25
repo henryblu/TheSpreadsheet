@@ -9,9 +9,7 @@ import java.io.IOException;
 
 public class Spreadsheet {
     private Map<CellAddress, Cell> cells;
-    private int maxRow = 0;
-    private int maxColumn = 0;
-
+    
     public Spreadsheet(){ this.cells = new HashMap<>(); }
     public int getRowCount(){ return getMaxRow(); }
     public int getColumnCount(){ return getMaxColumn(); }

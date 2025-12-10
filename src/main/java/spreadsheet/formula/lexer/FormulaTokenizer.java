@@ -1,10 +1,12 @@
-package spreadsheet.formula;
+package spreadsheet.formula.lexer;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import spreadsheet.exceptions.FormulaException;
+public final class FormulaTokenizer {
+    private FormulaTokenizer() {
+    }
 
-public class FormulaTokenizer {
     public static List<Token> tokenize(String input) {
         List<Token> tokens = new ArrayList<>();
         int length = input.length();
@@ -31,29 +33,29 @@ public class FormulaTokenizer {
                 }
                 String number = input.substring(firstNumberIndex, i);
                 double value = toNumber(number, firstNumberIndex);
-                tokens.add(Token.number(value));
+                tokens.add(Token.number(value, number, firstNumberIndex));
                 continue;
             }
 
             if (item == '+') {
-                tokens.add(Token.operator(TokenType.PLUS));
+                tokens.add(Token.operator(TokenType.PLUS, "+", i));
             } else if (item == '-') {
-                tokens.add(Token.operator(TokenType.MINUS));
+                tokens.add(Token.operator(TokenType.MINUS, "-", i));
             } else if (item == '*') {
-                tokens.add(Token.operator(TokenType.MULTIPLY));
+                tokens.add(Token.operator(TokenType.MULTIPLY, "*", i));
             } else if (item == '/') {
-                tokens.add(Token.operator(TokenType.DIVIDE));
+                tokens.add(Token.operator(TokenType.DIVIDE, "/", i));
             } else if (item == '(') {
-                tokens.add(Token.simple(TokenType.LPAREN));
+                tokens.add(Token.simple(TokenType.LPAREN, "(", i));
             } else if (item == ')') {
-                tokens.add(Token.simple(TokenType.RPAREN));
+                tokens.add(Token.simple(TokenType.RPAREN, ")", i));
             } else {
-                throw new FormulaException ("Unknown character '" + item + "'");
+                throw new LexerException("Unknown character '" + item + "' at position " + i);
             }
             i++;
         }
 
-        tokens.add(Token.simple(TokenType.EOF));
+        tokens.add(Token.simple(TokenType.EOF, "", length));
         return tokens;
     }
 
@@ -61,7 +63,7 @@ public class FormulaTokenizer {
         try {
             return Double.parseDouble(text);
         } catch (NumberFormatException ex) {
-            throw new FormulaException("Bad number near position " + startIndex);
+            throw new LexerException("Bad number near position " + startIndex);
         }
     }
 }

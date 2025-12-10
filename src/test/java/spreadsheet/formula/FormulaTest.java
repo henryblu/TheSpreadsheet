@@ -8,6 +8,12 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import spreadsheet.exceptions.FormulaException;
+import spreadsheet.formula.ast.ExpressionNode;
+import spreadsheet.formula.eval.FormulaEvaluator;
+import spreadsheet.formula.lexer.FormulaTokenizer;
+import spreadsheet.formula.lexer.Token;
+import spreadsheet.formula.lexer.TokenType;
+import spreadsheet.formula.parser.ShuntingYardParser;
 
 class FormulaTest {
 
@@ -38,8 +44,8 @@ class FormulaTest {
     @Test
     void evaluatorHandlesOrderOfOperations() {
         List<Token> tokens = FormulaTokenizer.tokenize("1+2*3");
-
-        double result = FormulaEvaluator.evaluate(tokens);
+        ExpressionNode node = ShuntingYardParser.parse(tokens);
+        double result = FormulaEvaluator.evaluate(node);
 
         assertEquals(7.0, result);
     }
@@ -47,8 +53,8 @@ class FormulaTest {
     @Test
     void evaluatorHandlesParentheses() {
         List<Token> tokens = FormulaTokenizer.tokenize("(4-1)*2");
-
-        double result = FormulaEvaluator.evaluate(tokens);
+        ExpressionNode node = ShuntingYardParser.parse(tokens);
+        double result = FormulaEvaluator.evaluate(node);
 
         assertEquals(6.0, result);
     }
@@ -57,6 +63,9 @@ class FormulaTest {
     void evaluatorThrowsOnDivisionByZero() {
         List<Token> tokens = FormulaTokenizer.tokenize("1/0");
 
-        assertThrows(FormulaException.class, () -> FormulaEvaluator.evaluate(tokens));
+        assertThrows(FormulaException.class, () -> {
+            ExpressionNode node = ShuntingYardParser.parse(tokens);
+            FormulaEvaluator.evaluate(node);
+        });
     }
 }

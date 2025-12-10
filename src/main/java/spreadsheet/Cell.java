@@ -1,10 +1,6 @@
 package spreadsheet;
-import java.util.List;
-
 import spreadsheet.exceptions.FormulaException;
-import spreadsheet.formula.FormulaEvaluator;
-import spreadsheet.formula.FormulaTokenizer;
-import spreadsheet.formula.Token;
+import spreadsheet.formula.FormulaEngine;
 public class Cell {
     private final CellAddress address;
     private String content;
@@ -35,8 +31,7 @@ public class Cell {
 
         String formula = trimmed.substring(1);
         try {
-            List<Token> tokens = FormulaTokenizer.tokenize(formula);
-            double result = FormulaEvaluator.evaluate(tokens);
+            double result = FormulaEngine.evaluate(formula);
             displayValue = Double.toString(result);
         } catch (FormulaException ex) {
             displayValue = "#ERR";

@@ -7,6 +7,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException; 
 
+import spreadsheet.exceptions.FormulaException;
+
 public class Spreadsheet {
     private Map<CellAddress, Cell> cells;
     
@@ -23,7 +25,7 @@ public class Spreadsheet {
         Cell cell = cells.get(address);
 
         if (cell == null){
-            cell = new Cell(address,content);
+            cell = new Cell(this, address,content);
             cells.put(address,cell);
         }
         cell.setContent(content);
@@ -36,6 +38,26 @@ public class Spreadsheet {
             return ""; 
         }
         return cell.getContent();
+    }
+
+    double resolveCellValue(int rowIndex, int columnIndex) {
+        CellAddress target = new CellAddress(rowIndex, columnIndex);
+        Cell targetCell = cells.get(target);
+        if (targetCell == null) {
+            throw new FormulaException("Referenced cell '" + columnLabel(columnIndex) + rowIndex + "' is empty");
+        }
+        return targetCell.evaluateNumericValue();
+    }
+
+    private static String columnLabel(int column) {
+        StringBuilder builder = new StringBuilder();
+        int current = column;
+        while (current > 0) {
+            int remainder = (current - 1) % 26;
+            builder.insert(0, (char) ('A' + remainder));
+            current = (current - 1) / 26;
+        }
+        return builder.toString();
     }
 
     public String getCellDisplayValue(CellAddress address) {

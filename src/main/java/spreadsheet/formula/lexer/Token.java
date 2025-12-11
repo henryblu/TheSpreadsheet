@@ -46,27 +46,19 @@ public class Token {
         return position;
     }
 
-    public static Token number(double value) {
-        return new Token(TokenType.NUMBER, value);
-    }
-
     public static Token number(double value, String lexeme, int position) {
         return new Token(TokenType.NUMBER, value, true, lexeme, position);
-    }
-
-    public static Token operator(TokenType type) {
-        return new Token(type);
     }
 
     public static Token operator(TokenType type, String lexeme, int position) {
         return new Token(type, 0.0, false, lexeme, position);
     }
 
-    public static Token simple(TokenType type) {
-        return new Token(type);
-    }
-
     public static Token simple(TokenType type, String lexeme, int position) {
         return new Token(type, 0.0, false, lexeme, position);
+    }
+
+    public static Token reference(String lexeme, int position) {
+        return new Token(TokenType.REFERENCE, 0.0, false, lexeme, position);
     }
 }

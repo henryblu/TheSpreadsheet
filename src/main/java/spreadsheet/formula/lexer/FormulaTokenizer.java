@@ -37,6 +37,27 @@ public final class FormulaTokenizer {
                 continue;
             }
 
+            if (Character.isLetter(item)) {
+                // similar to the implementation discussed in class I am still using the "isLetter" method :)
+                int start = i;
+                i++;
+                while (i < length && Character.isLetter(input.charAt(i))) {
+                    i++;
+                }
+                int lettersEnd = i;
+                while (i < length && Character.isDigit(input.charAt(i))) {
+                    i++;
+                }
+                if (lettersEnd == i) {
+                    // for partial error reporting
+                    String partial = input.substring(start, lettersEnd);
+                    throw new LexerException("Invalid cell reference '" + partial + "' at position " + start);
+                }
+                String reference = input.substring(start, i);
+                tokens.add(Token.reference(reference, start));
+                continue;
+            }
+
             if (item == '+') {
                 tokens.add(Token.operator(TokenType.PLUS, "+", i));
             } else if (item == '-') {

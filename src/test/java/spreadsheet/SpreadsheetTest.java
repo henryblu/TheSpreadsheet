@@ -61,6 +61,45 @@ class SpreadsheetTest {
     }
 
     @Test
+    void cellReferenceUsesTargetValue() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(a1, "42");
+        sheet.setCellContent(b1, "=A1");
+
+        assertEquals("=A1", sheet.getCellContent(b1));
+        assertEquals("42.0", sheet.getCellDisplayValue(b1));
+    }
+
+    @Test
+    void referenceToFormulaCellUsesEvaluatedValue() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(a1, "=2+3");
+        sheet.setCellContent(b1, "=A1*2");
+
+        assertEquals("10.0", sheet.getCellDisplayValue(b1));
+    }
+
+    @Test
+    void referencingEmptyCellShowsError() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(b1, "=A1");
+
+        assertEquals("#ERR", sheet.getCellDisplayValue(b1));
+        sheet.setCellContent(a1, "5");
+        sheet.setCellContent(b1, "=A1");
+        assertEquals("5.0", sheet.getCellDisplayValue(b1));
+    }
+
+    @Test
     void saveAndLoadWorks() throws IOException {
         Spreadsheet sheet = new Spreadsheet();
         sheet.setCellContent(new CellAddress(1, 1), "Hello");

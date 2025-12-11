@@ -4,6 +4,7 @@ import spreadsheet.exceptions.FormulaException;
 import spreadsheet.formula.ast.BinaryOpNode;
 import spreadsheet.formula.ast.ExpressionNode;
 import spreadsheet.formula.ast.NumberNode;
+import spreadsheet.formula.ast.ReferenceNode;
 import spreadsheet.formula.lexer.TokenType;
 
 public final class FormulaEvaluator {
@@ -11,17 +12,25 @@ public final class FormulaEvaluator {
     }
 
     public static double evaluate(ExpressionNode node) {
-        return evaluateNode(node);
+        return evaluate(node, null);
     }
 
-    private static double evaluateNode(ExpressionNode node) {
+    public static double evaluate(ExpressionNode node, CellLookup lookup) {
+        return evaluateNode(node, lookup);
+    }
+
+    private static double evaluateNode(ExpressionNode node, CellLookup lookup) {
         if (node instanceof NumberNode) {
             return ((NumberNode) node).getValue();
         }
+        if (node instanceof ReferenceNode) {
+            ReferenceNode refNode = (ReferenceNode) node;
+            return lookup.findCell(refNode.getRowIndex(), refNode.getColumnIndex());
+        }
         if (node instanceof BinaryOpNode) {
             BinaryOpNode opNode = (BinaryOpNode) node;
-            double left = evaluateNode(opNode.getLeft());
-            double right = evaluateNode(opNode.getRight());
+            double left = evaluateNode(opNode.getLeft(), lookup);
+            double right = evaluateNode(opNode.getRight(), lookup);
             return applyOperator(opNode.getOperator(), left, right);
         }
         throw new FormulaException("Unknown expression node: " + node.getClass().getSimpleName());

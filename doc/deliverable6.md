@@ -20,5 +20,5 @@ I added support for cell references in formulas. These references are now evalua
    `Spreadsheet.resolveCellValue` locates the target cell, throws an error if it is empty or non-numeric, and returns the numeric value, recursing through formulas as needed.
 
 5. **Tests**
-   I added regression tests in `SpreadsheetTest` for references to literal values, references to formula cells, and the empty-cell error case. This ensures the full lookup path is tested end to end.
+   I added regression tests in `SpreadsheetTest` for references to literal values, references to formula cells, and the empty-cell error case.
 

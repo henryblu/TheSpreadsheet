@@ -9,6 +9,7 @@ import spreadsheet.formula.ast.ExpressionNode;
 import spreadsheet.formula.ast.NumberNode;
 import spreadsheet.formula.lexer.Token;
 import spreadsheet.formula.lexer.TokenType;
+import spreadsheet.formula.ast.ReferenceNode;
 
 public final class ShuntingYardParser {
     private ShuntingYardParser() {
@@ -23,6 +24,8 @@ public final class ShuntingYardParser {
 
             if (type == TokenType.NUMBER) {
                 operands.push(new NumberNode(token.getValue()));
+            } else if (type == TokenType.REFERENCE) {
+                operands.push(new ReferenceNode(token.getLexeme()));
             } else if (type == TokenType.LPAREN) {
                 operators.push(type);
             } else if (type == TokenType.RPAREN) {

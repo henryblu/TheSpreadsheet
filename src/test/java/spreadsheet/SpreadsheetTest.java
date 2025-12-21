@@ -1,12 +1,15 @@
 package spreadsheet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import spreadsheet.exceptions.FormulaException;
 
 class SpreadsheetTest {
 
@@ -113,5 +116,30 @@ class SpreadsheetTest {
 
         assertEquals("Hello", loaded.getCellContent(new CellAddress(1, 1)));
         assertEquals("42", loaded.getCellContent(new CellAddress(2, 2)));
+    }
+
+    @Test
+    void dependentCellRefreshesWhenReferenceChanges() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(a1, "5");
+        sheet.setCellContent(b1, "=A1");
+        assertEquals("5.0", sheet.getCellDisplayValue(b1));
+
+        sheet.setCellContent(a1, "6");
+        assertEquals("6.0", sheet.getCellDisplayValue(b1));
+    }
+
+    @Test
+    void circularReferenceIsRejected() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(a1, "=B1");
+
+        assertThrows(FormulaException.class, () -> sheet.setCellContent(b1, "=A1"));
     }
 }

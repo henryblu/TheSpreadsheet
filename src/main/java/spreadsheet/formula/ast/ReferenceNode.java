@@ -7,6 +7,7 @@ public class ReferenceNode implements ExpressionNode {
     private final int columnIndex;
 
     public ReferenceNode(String text) {
+        // Validate and parse the reference by splitting into column and row parts
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Reference text cannot be empty");
         }

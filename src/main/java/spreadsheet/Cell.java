@@ -25,6 +25,10 @@ public class Cell {
         evaluate();
     }
 
+    void recalculateDisplay() {
+        evaluate();
+    }
+
     private void evaluate() {
         String trimmed = content.stripLeading();
         if (!trimmed.startsWith("=")) {
@@ -52,7 +56,7 @@ public class Cell {
         String formula = trimmed.substring(1);
         return FormulaEngine.evaluate(formula, spreadsheet::resolveCellValue);
     }
-
+ 
     private double parseLiteral(String text) {
         try {
             return Double.parseDouble(text);

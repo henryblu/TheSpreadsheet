@@ -36,7 +36,7 @@ public final class ShuntingYardParser {
             } else if (type == TokenType.EOF) {
                 break;
             } else {
-                throw new FormulaException("Unknown token: " + type);
+                throw new FormulaException("Unknown type: " + type);
             }
         }
 

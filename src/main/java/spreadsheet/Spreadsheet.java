@@ -1,46 +1,78 @@
 package spreadsheet;
-import java.util.HashMap;
-import java.util.Map;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.IOException; 
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import spreadsheet.exceptions.FormulaException;
+import spreadsheet.formula.ast.ExpressionNode;
+import spreadsheet.formula.ast.ReferenceCollector;
+import spreadsheet.formula.lexer.FormulaTokenizer;
+import spreadsheet.formula.lexer.Token;
+import spreadsheet.formula.parser.ShuntingYardParser;
 
 public class Spreadsheet {
-    private Map<CellAddress, Cell> cells;
-    
-    public Spreadsheet(){ this.cells = new HashMap<>(); }
-    public int getRowCount(){ return getMaxRow(); }
-    public int getColumnCount(){ return getMaxColumn(); }
+    private final Map<CellAddress, Cell> cells;
+    private final Map<CellAddress, Set<CellAddress>> dependencies;
+    private final Map<CellAddress, Set<CellAddress>> dependents;
 
-    public void setCellContent(CellAddress address, String content){
-        if (content == null){
-            cells.remove(address);
-            return;
-        } 
-
-        Cell cell = cells.get(address);
-
-        if (cell == null){
-            cell = new Cell(this, address,content);
-            cells.put(address,cell);
-        }
-        cell.setContent(content);
-
+    public Spreadsheet() {
+        this.cells = new HashMap<>();
+        this.dependencies = new HashMap<>();
+        this.dependents = new HashMap<>();
     }
 
-    public String getCellContent(CellAddress address){
+    public int getRowCount() { return getMaxRow(); }
+    public int getColumnCount() { return getMaxColumn(); }
+
+    public void setCellContent(CellAddress address, String content) {
+        // Sets the content of a cell, updating dependencies and checking for cycles
+        if (content == null) {
+            removeCellAndEdges(address);
+            refreshDependents(address);
+            return;
+        }
+
         Cell cell = cells.get(address);
-        if (cell == null){ 
-            return ""; 
+        if (cell == null) {
+            cell = new Cell(this, address, "");
+            cells.put(address, cell);
+        }
+
+        Set<CellAddress> oldDeps = dependencies.getOrDefault(address, Set.of());
+        Set<CellAddress> newDeps = collectDependencies(content);
+
+        updateDependencies(address, oldDeps, newDeps);
+
+        if (hasCycleFrom(address)) {
+            updateDependencies(address, newDeps, oldDeps);
+            throw new FormulaException("Circular reference found");
+        }
+
+        cell.setContent(content);
+        refreshDependents(address);
+    }
+
+    public String getCellContent(CellAddress address) {
+        // Returns the raw content of the cell
+        Cell cell = cells.get(address);
+        if (cell == null) {
+            return "";
         }
         return cell.getContent();
     }
 
     double resolveCellValue(int rowIndex, int columnIndex) {
+        // Resolves the numeric value of a referenced cell
         CellAddress target = new CellAddress(rowIndex, columnIndex);
         Cell targetCell = cells.get(target);
         if (targetCell == null) {
@@ -50,6 +82,7 @@ public class Spreadsheet {
     }
 
     private static String columnLabel(int column) {
+        // Converts a 1-based column index to its corresponding label (e.g., 1 -> A, 27 -> AA)
         StringBuilder builder = new StringBuilder();
         int current = column;
         while (current > 0) {
@@ -61,6 +94,7 @@ public class Spreadsheet {
     }
 
     public String getCellDisplayValue(CellAddress address) {
+        // Returns the display value of the cell
         Cell cell = cells.get(address);
         if (cell == null) {
             return "";
@@ -69,7 +103,10 @@ public class Spreadsheet {
     }
 
     public void loadFromFile(String filename) throws IOException {
+        // load the spreadsheet from a CSV file
         cells.clear();
+        dependencies.clear();
+        dependents.clear();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String line;
@@ -92,8 +129,8 @@ public class Spreadsheet {
         }
     }
 
-
     private int getMaxRow() {
+        // helper for saveToFile to determine max row
         int max = 0;
         for (CellAddress addr : cells.keySet()) {
             if (addr.getRow() > max) {
@@ -104,6 +141,7 @@ public class Spreadsheet {
     }
 
     private int getMaxColumn() {
+        // helper for saveToFile to determine max column
         int max = 0;
         for (CellAddress addr : cells.keySet()) {
             if (addr.getColumn() > max) {
@@ -114,6 +152,7 @@ public class Spreadsheet {
     }
 
     public void saveToFile(String filename) throws IOException {
+        // save the spreadsheet to a CSV file
         int maxRow = getMaxRow();
         int maxCol = getMaxColumn();
 
@@ -137,4 +176,98 @@ public class Spreadsheet {
         }
     }
 
+    private Set<CellAddress> collectDependencies(String content) {
+        // Collect cell references from the formula content
+        if (content == null) {
+            return Set.of();
+        }
+        String trimmed = content.stripLeading();
+        if (!trimmed.startsWith("=")) {
+            return Set.of();
+        }
+        String formula = trimmed.substring(1);
+        List<Token> tokens = FormulaTokenizer.tokenize(formula);
+        ExpressionNode ast = ShuntingYardParser.parse(tokens);
+        return ReferenceCollector.collect(ast);
+    }
+
+    private void updateDependencies(CellAddress address,
+                                    Set<CellAddress> oldDeps,
+                                    Set<CellAddress> newDeps) {
+        // Update the dependency graph when changing cell content
+        for (CellAddress dep : oldDeps) {
+            Set<CellAddress> reverse = dependents.get(dep);
+            if (reverse != null) {
+                reverse.remove(address);
+                if (reverse.isEmpty()) {
+                    dependents.remove(dep);
+                }
+            }
+        }
+
+        if (newDeps.isEmpty()) {
+            dependencies.remove(address);
+        } else {
+            dependencies.put(address, new HashSet<>(newDeps));
+        }
+
+        for (CellAddress dep : newDeps) {
+            dependents.computeIfAbsent(dep, key -> new HashSet<>()).add(address);
+        }
+    }
+
+    private void removeCellAndEdges(CellAddress address) {
+        // Added to remove the cell and its dependencies
+        cells.remove(address);
+        Set<CellAddress> oldDeps = dependencies.getOrDefault(address, Set.of());
+        updateDependencies(address, oldDeps, Set.of());
+    }
+
+    private boolean hasCycleFrom(CellAddress start) {
+        return dfsCycleCheck(start, new HashSet<>(), new HashSet<>());
+    }
+
+    private boolean dfsCycleCheck(CellAddress current,
+                                  Set<CellAddress> visiting,
+                                  Set<CellAddress> visited) {
+        // Simple DFS to detect cycles
+        if (visiting.contains(current)) {
+            return true;
+        }
+        if (visited.contains(current)) {
+            return false;
+        }
+
+        visiting.add(current);
+        for (CellAddress neighbor : dependencies.getOrDefault(current, Set.of())) {
+            if (dfsCycleCheck(neighbor, visiting, visited)) {
+                return true;
+            }
+        }
+        visiting.remove(current);
+        visited.add(current);
+        return false;
+    }
+
+    private void refreshDependents(CellAddress start) {
+        // Simple BFS to refresh all dependent cells
+        Deque<CellAddress> queue = new ArrayDeque<>();
+        Set<CellAddress> visited = new HashSet<>();
+
+        queue.add(start);
+        visited.add(start);
+
+        while (!queue.isEmpty()) {
+            CellAddress current = queue.removeFirst();
+            Cell cell = cells.get(current);
+            if (cell != null) {
+                cell.recalculateDisplay();
+            }
+            for (CellAddress dependent : dependents.getOrDefault(current, Set.of())) {
+                if (visited.add(dependent)) {
+                    queue.add(dependent);
+                }
+            }
+        }
+    }
 }

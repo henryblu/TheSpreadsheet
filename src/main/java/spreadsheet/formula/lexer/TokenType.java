@@ -6,6 +6,9 @@ public enum TokenType {
     MINUS,
     MULTIPLY,
     DIVIDE,
+    SEMICOLON,
+    COLON,
+    IDENT,
     LPAREN,
     RPAREN,
     EOF

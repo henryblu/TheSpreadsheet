@@ -49,12 +49,13 @@ public final class FormulaTokenizer {
                     i++;
                 }
                 if (lettersEnd == i) {
-                    // for partial error reporting
-                    String partial = input.substring(start, lettersEnd);
-                    throw new LexerException("Invalid cell reference '" + partial + "' at position " + start);
+                    // for partials error reporting
+                    String ident = input.substring(start, lettersEnd);
+                    tokens.add(Token.identifier(ident, start));
+                } else {
+                    String reference = input.substring(start, i);
+                    tokens.add(Token.reference(reference, start));
                 }
-                String reference = input.substring(start, i);
-                tokens.add(Token.reference(reference, start));
                 continue;
             }
 
@@ -66,6 +67,10 @@ public final class FormulaTokenizer {
                 tokens.add(Token.operator(TokenType.MULTIPLY, "*", i));
             } else if (item == '/') {
                 tokens.add(Token.operator(TokenType.DIVIDE, "/", i));
+            } else if (item == ';') {
+                tokens.add(Token.simple(TokenType.SEMICOLON, ";", i));
+            } else if (item == ':') {
+                tokens.add(Token.simple(TokenType.COLON, ":", i));
             } else if (item == '(') {
                 tokens.add(Token.simple(TokenType.LPAREN, "(", i));
             } else if (item == ')') {

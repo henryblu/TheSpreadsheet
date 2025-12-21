@@ -142,4 +142,70 @@ class SpreadsheetTest {
 
         assertThrows(FormulaException.class, () -> sheet.setCellContent(b1, "=A1"));
     }
+
+    @Test
+    void sumSupportsNumericArguments() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+
+        sheet.setCellContent(a1, "=SUM(1;2;3)");
+
+        assertEquals("6.0", sheet.getCellDisplayValue(a1));
+    }
+
+    @Test
+    void minAndMaxWorkOverRanges() {
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.setCellContent(new CellAddress(1, 1), "5");  // A1
+        sheet.setCellContent(new CellAddress(2, 1), "2");  // A2
+        sheet.setCellContent(new CellAddress(1, 2), "8");  // B1
+        sheet.setCellContent(new CellAddress(2, 2), "4");  // B2
+
+        sheet.setCellContent(new CellAddress(1, 3), "=MIN(A1:B2)");
+        sheet.setCellContent(new CellAddress(2, 3), "=MAX(A1:B2)");
+
+        assertEquals("2.0", sheet.getCellDisplayValue(new CellAddress(1, 3)));
+        assertEquals("8.0", sheet.getCellDisplayValue(new CellAddress(2, 3)));
+    }
+
+    @Test
+    void averageSupportsMixedArguments() {
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.setCellContent(new CellAddress(1, 1), "2");  // A1
+        sheet.setCellContent(new CellAddress(2, 1), "4");  // A2
+        sheet.setCellContent(new CellAddress(1, 2), "6");  // B1
+
+        sheet.setCellContent(new CellAddress(1, 3), "=AVERAGE(A1:A2;B1;8)");
+
+        assertEquals("5.0", sheet.getCellDisplayValue(new CellAddress(1, 3)));
+    }
+
+    @Test
+    // testing the example from the assignment description =1 + A1*((SUM(A2:B5;AVERAGE(B6:D8);C1;27)/4)+(D6-D8))
+
+    void complexFormulaFromDescriptionIsEvaluatedCorrectly() {
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.setCellContent(new CellAddress(1, 1), "3");   // A1
+        sheet.setCellContent(new CellAddress(2, 1), "4");   // A2
+        sheet.setCellContent(new CellAddress(2, 2), "6");   // B2
+        sheet.setCellContent(new CellAddress(3, 3), "8");   // C3
+        sheet.setCellContent(new CellAddress(6, 4), "10");  // D6
+        sheet.setCellContent(new CellAddress(8, 4), "2");   // D8
+
+        sheet.setCellContent(new CellAddress(1, 5), "=1 + A1*((SUM(A2:B5;AVERAGE(B6:D8);C3;28)/4)+(D6-D8))");
+        // resolves to 1 + 3 * (( (4+6+(10+2)/2 +8 +28)/4) + (10-2)) = 64
+        assertEquals("64.0", sheet.getCellDisplayValue(new CellAddress(1, 5)));
+    }
+    @Test
+    void nestedFunctionsCanBeCombined() {
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.setCellContent(new CellAddress(1, 1), "1");  // A1
+        sheet.setCellContent(new CellAddress(2, 1), "2");  // A2
+        sheet.setCellContent(new CellAddress(1, 2), "3");  // B1
+        sheet.setCellContent(new CellAddress(2, 2), "4");  // B2
+
+        sheet.setCellContent(new CellAddress(1, 3), "=SUM(A1:B2;AVERAGE(A1:B2))");
+
+        assertEquals("12.5", sheet.getCellDisplayValue(new CellAddress(1, 3)));
+    }
 }

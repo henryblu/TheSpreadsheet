@@ -61,4 +61,7 @@ public class Token {
     public static Token reference(String lexeme, int position) {
         return new Token(TokenType.REFERENCE, 0.0, false, lexeme, position);
     }
+    public static Token identifier(String lexeme, int position) {
+        return new Token(TokenType.IDENT, 0.0, false, lexeme, position);
+    }
 }

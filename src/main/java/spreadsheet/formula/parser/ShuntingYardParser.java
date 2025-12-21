@@ -1,51 +1,123 @@
 package spreadsheet.formula.parser;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
 import spreadsheet.exceptions.FormulaException;
 import spreadsheet.formula.ast.BinaryOpNode;
 import spreadsheet.formula.ast.ExpressionNode;
+import spreadsheet.formula.ast.FunctionCallNode;
 import spreadsheet.formula.ast.NumberNode;
+import spreadsheet.formula.ast.RangeNode;
+import spreadsheet.formula.ast.ReferenceNode;
 import spreadsheet.formula.lexer.Token;
 import spreadsheet.formula.lexer.TokenType;
-import spreadsheet.formula.ast.ReferenceNode;
 
 public final class ShuntingYardParser {
     private ShuntingYardParser() {
     }
 
     public static ExpressionNode parse(List<Token> tokens) {
-        Stack<TokenType> operators = new Stack<>();
+        Stack<Token> operators = new Stack<>();
         Stack<ExpressionNode> operands = new Stack<>();
+        Stack<Boolean> funcParens = new Stack<>();
+        Stack<Integer> argCounts = new Stack<>();
+        int functionDepth = 0;
+        Token previous = null;
 
         for (Token token : tokens) {
             TokenType type = token.getType();
 
-            if (type == TokenType.NUMBER) {
-                operands.push(new NumberNode(token.getValue()));
-            } else if (type == TokenType.REFERENCE) {
-                operands.push(new ReferenceNode(token.getLexeme()));
-            } else if (type == TokenType.LPAREN) {
-                operators.push(type);
-            } else if (type == TokenType.RPAREN) {
-                collapseUntilLeftParen(operands, operators);
-            } else if (isOperator(type)) {
-                collapseByPrecedence(type, operands, operators);
-                operators.push(type);
-            } else if (type == TokenType.EOF) {
-                break;
-            } else {
-                throw new FormulaException("Unknown type: " + type);
+            switch (type) {
+                case NUMBER:
+                    operands.push(new NumberNode(token.getValue()));
+                    break;
+                case REFERENCE:
+                    operands.push(new ReferenceNode(token.getLexeme()));
+                    break;
+                case IDENT:
+                    operators.push(token);
+                    break;
+                case LPAREN:
+                    operators.push(token);
+                    boolean isFunction = previous != null && previous.getType() == TokenType.IDENT;
+                    funcParens.push(isFunction);
+                    if (isFunction) {
+                        argCounts.push(1);
+                        functionDepth++;
+                    }
+                    break;
+                case SEMICOLON:
+                    if (funcParens.isEmpty() || !funcParens.peek()) {
+                        throw new FormulaException("Unexpected ';'");
+                    }
+                    collapseUntilLeftParen(operands, operators);
+                    if (operators.isEmpty() || operators.peek().getType() != TokenType.LPAREN) {
+                        throw new FormulaException("Missing '('");
+                    }
+                    argCounts.push(argCounts.pop() + 1);
+                    break;
+                case RPAREN:
+                    collapseUntilLeftParen(operands, operators);
+                    if (operators.isEmpty() || operators.peek().getType() != TokenType.LPAREN) {
+                        throw new FormulaException("Missing '('");
+                    }
+                    operators.pop();
+                    boolean wasFunction = funcParens.pop();
+                    if (wasFunction) {
+                        if (operators.isEmpty() || operators.peek().getType() != TokenType.IDENT) {
+                            throw new FormulaException("Missing function name");
+                        }
+                        Token funcToken = operators.pop();
+                        int argCount = argCounts.pop();
+                        if (operands.size() < argCount) {
+                            throw new FormulaException("Missing function argument");
+                        }
+                        List<ExpressionNode> args = new ArrayList<>();
+                        for (int i = 0; i < argCount; i++) {
+                            args.add(0, operands.pop());
+                        }
+                        operands.push(new FunctionCallNode(funcToken.getLexeme(), args));
+                        functionDepth--;
+                    }
+                    break;
+                case COLON:
+                    if (functionDepth == 0) {
+                        throw new FormulaException("Range only allowed inside functions");
+                    }
+                    collapseByPrecedence(token, operands, operators);
+                    operators.push(token);
+                    break;
+                case PLUS:
+                case MINUS:
+                case MULTIPLY:
+                case DIVIDE:
+                    collapseByPrecedence(token, operands, operators);
+                    operators.push(token);
+                    break;
+                case EOF:
+                    previous = token;
+                    break;
+                default:
+                    throw new FormulaException("Unknown type: " + type);
             }
+
+            if (type == TokenType.EOF) {
+                break;
+            }
+            previous = token;
         }
 
         while (!operators.isEmpty()) {
-            TokenType top = operators.pop();
-            if (top == TokenType.LPAREN) {
+            Token top = operators.pop();
+            if (top.getType() == TokenType.LPAREN) {
                 throw new FormulaException("Missing ')'");
             }
-            applyOperator(top, operands);
+            if (top.getType() == TokenType.IDENT) {
+                throw new FormulaException("Missing '(' after function name");
+            }
+            applyOperator(top.getType(), operands);
         }
 
         if (operands.size() != 1) {
@@ -55,33 +127,37 @@ public final class ShuntingYardParser {
     }
 
     private static void collapseUntilLeftParen(Stack<ExpressionNode> operands,
-                                               Stack<TokenType> operators) {
-        while (!operators.isEmpty() && operators.peek() != TokenType.LPAREN) {
-            applyOperator(operators.pop(), operands);
+                                               Stack<Token> operators) {
+        while (!operators.isEmpty() && operators.peek().getType() != TokenType.LPAREN) {
+            Token op = operators.pop();
+            applyOperator(op.getType(), operands);
         }
-        if (operators.isEmpty()) {
-            throw new FormulaException("Missing '('");
-        }
-        operators.pop();
     }
 
-    private static void collapseByPrecedence(TokenType incoming,
+    private static void collapseByPrecedence(Token incoming,
                                              Stack<ExpressionNode> operands,
-                                             Stack<TokenType> operators) {
+                                             Stack<Token> operators) {
         while (!operators.isEmpty()
-                && isOperator(operators.peek())
-                && precedence(operators.peek()) >= precedence(incoming)) {
-            applyOperator(operators.pop(), operands);
+                && isOperator(operators.peek().getType())
+                && precedence(operators.peek().getType()) >= precedence(incoming.getType())) {
+            Token op = operators.pop();
+            applyOperator(op.getType(), operands);
         }
     }
 
-    private static void applyOperator(TokenType operator,
-                                      Stack<ExpressionNode> operands) {
+    private static void applyOperator(TokenType operator, Stack<ExpressionNode> operands) {
         if (operands.size() < 2) {
             throw new FormulaException("Missing operand");
         }
         ExpressionNode right = operands.pop();
         ExpressionNode left = operands.pop();
+        if (operator == TokenType.COLON) {
+            if (!(left instanceof ReferenceNode) || !(right instanceof ReferenceNode)) {
+                throw new FormulaException("Range endpoints must be cell references");
+            }
+            operands.push(new RangeNode((ReferenceNode) left, (ReferenceNode) right));
+            return;
+        }
         operands.push(new BinaryOpNode(operator, left, right));
     }
 
@@ -89,10 +165,14 @@ public final class ShuntingYardParser {
         return type == TokenType.PLUS
             || type == TokenType.MINUS
             || type == TokenType.MULTIPLY
-            || type == TokenType.DIVIDE;
+            || type == TokenType.DIVIDE
+            || type == TokenType.COLON;
     }
 
     private static int precedence(TokenType type) {
+        if (type == TokenType.COLON) {
+            return 3;
+        }
         if (type == TokenType.MULTIPLY || type == TokenType.DIVIDE) {
             return 2;
         }

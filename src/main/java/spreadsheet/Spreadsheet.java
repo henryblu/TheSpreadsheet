@@ -12,15 +12,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import java.util.OptionalDouble;
 import spreadsheet.exceptions.FormulaException;
 import spreadsheet.formula.ast.ExpressionNode;
 import spreadsheet.formula.ast.ReferenceCollector;
 import spreadsheet.formula.lexer.FormulaTokenizer;
 import spreadsheet.formula.lexer.Token;
 import spreadsheet.formula.parser.ShuntingYardParser;
+import spreadsheet.formula.eval.CellLookup;
 
-public class Spreadsheet {
+
+public class Spreadsheet implements CellLookup{
     private final Map<CellAddress, Cell> cells;
     private final Map<CellAddress, Set<CellAddress>> dependencies;
     private final Map<CellAddress, Set<CellAddress>> dependents;
@@ -269,5 +271,22 @@ public class Spreadsheet {
                 }
             }
         }
+    }
+    
+    public double findCell(int rowIndex, int columnIndex) {
+        return resolveCellValue(rowIndex, columnIndex);
+    }
+
+    public OptionalDouble findCellOptional(int rowIndex, int columnIndex) {
+        CellAddress target = new CellAddress(rowIndex, columnIndex);
+        Cell targetCell = cells.get(target);
+        if (targetCell == null) {
+            return OptionalDouble.empty();
+        }
+        String content = targetCell.getContent();
+        if (content == null || content.strip().isEmpty()) {
+            return OptionalDouble.empty();
+        }
+        return OptionalDouble.of(targetCell.evaluateNumericValue());
     }
 }

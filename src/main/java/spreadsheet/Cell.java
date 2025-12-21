@@ -38,7 +38,7 @@ public class Cell {
 
         String formula = trimmed.substring(1);
         try {
-            double result = FormulaEngine.evaluate(formula, spreadsheet::resolveCellValue);
+            double result = FormulaEngine.evaluate(formula, spreadsheet);
             displayValue = Double.toString(result);
         } catch (FormulaException ex) {
             displayValue = "#ERR";
@@ -54,7 +54,7 @@ public class Cell {
         }
 
         String formula = trimmed.substring(1);
-        return FormulaEngine.evaluate(formula, spreadsheet::resolveCellValue);
+        return FormulaEngine.evaluate(formula, spreadsheet);
     }
  
     private double parseLiteral(String text) {

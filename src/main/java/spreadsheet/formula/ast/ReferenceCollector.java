@@ -24,6 +24,21 @@ public final class ReferenceCollector {
             refs.add(new CellAddress(ref.getRowIndex(), ref.getColumnIndex()));
             return;
         }
+        if (node instanceof RangeNode) {
+            RangeBounds bounds = ((RangeNode) node).toBounds();
+            for (int r = bounds.getRowMin(); r <= bounds.getRowMax(); r++) {
+                for (int c = bounds.getColMin(); c <= bounds.getColMax(); c++) {
+                    refs.add(new CellAddress(r, c));
+                }
+            }
+            return;
+        }
+        if (node instanceof FunctionCallNode) {
+            for (ExpressionNode arg : ((FunctionCallNode) node).getArgs()) {
+                collectInto(arg, refs);
+            }
+            return;
+        }
         if (node instanceof BinaryOpNode) {
             BinaryOpNode bin = (BinaryOpNode) node;
             collectInto(bin.getLeft(), refs);

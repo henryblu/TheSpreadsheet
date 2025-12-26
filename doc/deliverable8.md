@@ -41,10 +41,9 @@ This follows the specification and avoids ambiguous expressions such as `A1:B3 +
 
 ### Extending the existing Shunting Yard parser
 
-I extended the current Shunting Yard–based parser instead of introducing a separate grammar.
+I extended the current Shunting Yard–based parser instead of introducing a separate grammar. It got a little messy so i added switching to make things clearer.
 
-This keeps a single parsing pipeline and allows arithmetic expressions, function calls, and nesting to work together naturally. Function names are pushed onto the operator stack, and function calls are constructed when a closing `)` is encountered. Argument counts are tracked explicitly and incremented on each `;`.
-
+This keeps a single parsing pipeline and allows arithmetic expressions, function calls, and nesting to work together naturally. Function names are pushed onto the operator stack, and function calls are constructed when a closing `)` is encountered. Argument counts are tracked explicitly and incremented on each `;.
 ---
 
 ### Lexer support for identifiers, separators, and ranges
@@ -55,7 +54,7 @@ The lexer now emits:
 * `SEMICOLON` for argument separation
 * `COLON` for range expressions
 
-Letter-only sequences become identifiers, while letter+digit sequences become references. This distinction keeps the lexer simple and avoids grammar-level ambiguity.
+Letter-only sequences become identifiers, while letter+digit sequences become references. This keeps the lexer simple and avoids grammar-level ambiguity.
 
 ---
 

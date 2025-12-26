@@ -5,7 +5,9 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -105,33 +107,46 @@ public class Spreadsheet implements CellLookup{
     }
 
     public void loadFromFile(String filename) throws IOException {
-        // load the spreadsheet from a CSV file
-        cells.clear();
-        dependencies.clear();
-        dependents.clear();
-
+        // load the spreadsheet from a s2v file
+        resetState();
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-            String line;
-            int rowIndex = 1;
+            loadFromReader(reader);
+        }
+    }
 
-            while ((line = reader.readLine()) != null) {
-                String[] tokens = line.split(";", -1);
+    public void loadFromS2vString(String s2v) {
+        // load the spreadsheet from S2V content (semicolon-separated rows)
+        // specifically to load the demo data in the github page since pages cant access files
+        resetState();
+        if (s2v == null || s2v.isEmpty()) {
+            return;
+        }
+        try (BufferedReader reader = new BufferedReader(new StringReader(s2v))) {
+            loadFromReader(reader);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unexpected I/O while reading S2V data", ex);
+        }
+    }
 
-                for (int i = 0; i < tokens.length; i++) {
-                    String content = tokens[i];
-                    int colIndex = i + 1;
+    public boolean isCellError(CellAddress address) {
+        // for the ui
+        Cell cell = cells.get(address);
+        if (cell == null) {
+            return false;
+        }
+        return "#ERR".equals(cell.getDisplayValue());
+    }
 
-                    if (!content.isEmpty()) {
-                        if (content.startsWith("=")) {
-                            content = content.replace(",", ";");
-                        }
-                        CellAddress address = new CellAddress(rowIndex, colIndex);
-                        setCellContent(address, content);
-                    }
-                }
-                rowIndex++;
+    public List<CellAddress> getNonEmptyCells() {
+        // helper for the ui
+        List<CellAddress> result = new ArrayList<>();
+        for (Map.Entry<CellAddress, Cell> entry : cells.entrySet()) {
+            String content = entry.getValue().getContent();
+            if (content != null && !content.isEmpty()) {
+                result.add(entry.getKey());
             }
         }
+        return result;
     }
 
     private int getMaxRow() {
@@ -222,6 +237,36 @@ public class Spreadsheet implements CellLookup{
 
         for (CellAddress dep : newDeps) {
             dependents.computeIfAbsent(dep, key -> new HashSet<>()).add(address);
+        }
+    }
+
+    private void resetState() {
+        cells.clear();
+        dependencies.clear();
+        dependents.clear();
+    }
+
+    private void loadFromReader(BufferedReader reader) throws IOException {
+        // Load the spreadsheet from a reader (used by loadFromFile and loadFromS2vString)
+        String line;
+        int rowIndex = 1;
+
+        while ((line = reader.readLine()) != null) {
+            String[] tokens = line.split(";", -1);
+
+            for (int i = 0; i < tokens.length; i++) {
+                String content = tokens[i];
+                int colIndex = i + 1;
+
+                if (!content.isEmpty()) {
+                    if (content.startsWith("=")) {
+                        content = content.replace(",", ";");
+                    }
+                    CellAddress address = new CellAddress(rowIndex, colIndex);
+                    setCellContent(address, content);
+                }
+            }
+            rowIndex++;
         }
     }
 

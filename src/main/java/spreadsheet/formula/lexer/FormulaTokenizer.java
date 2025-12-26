@@ -38,7 +38,7 @@ public final class FormulaTokenizer {
             }
 
             if (Character.isLetter(item)) {
-                // similar to the implementation discussed in class I am still using the "isLetter" method :)
+                // similar to the implementation discussed in class. I am still using the "isLetter" method :)
                 int start = i;
                 i++;
                 while (i < length && Character.isLetter(input.charAt(i))) {

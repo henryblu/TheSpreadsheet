@@ -7,6 +7,7 @@ public final class FunctionEvaluator {
     }
 
     public static double evaluate(FunctionType type, List<Double> values) {
+        // simple evaluator for basic functions
         if (values.isEmpty()) {
             throw new IllegalArgumentException("Function has no numeric values");
         }

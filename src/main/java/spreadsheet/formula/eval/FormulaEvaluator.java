@@ -55,6 +55,7 @@ public final class FormulaEvaluator {
     }
 
     private static double evaluateFunction(FunctionCallNode node, CellLookup lookup) {
+        // for a function call, collect argument values and evaluate
         FunctionType type = FunctionType.fromName(node.getName());
         List<Double> values = new ArrayList<>();
         for (ExpressionNode arg : node.getArgs()) {
@@ -70,6 +71,7 @@ public final class FormulaEvaluator {
     private static void collectValues(ExpressionNode arg,
                                       List<Double> values,
                                       CellLookup lookup) {
+        // helper to collect values from an argument node
         if (arg instanceof RangeNode) {
             addRangeValues((RangeNode) arg, values, lookup);
             return;
@@ -80,6 +82,8 @@ public final class FormulaEvaluator {
     private static void addRangeValues(RangeNode range,
                                        List<Double> values,
                                        CellLookup lookup) {
+        // helper to add all cell values from a range
+        // skips empty cells
         if (lookup == null) {
             throw new FormulaException("Cell lookup not provided");
         }

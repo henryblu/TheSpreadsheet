@@ -28,17 +28,20 @@ public final class ShuntingYardParser {
 
         for (Token token : tokens) {
             TokenType type = token.getType();
-
+            // 21.12.2025 I switched to switch expression and a stack for better handling of different token types
             switch (type) {
                 case NUMBER:
                     operands.push(new NumberNode(token.getValue()));
                     break;
+
                 case REFERENCE:
                     operands.push(new ReferenceNode(token.getLexeme()));
                     break;
+
                 case IDENT:
                     operators.push(token);
                     break;
+
                 case LPAREN:
                     operators.push(token);
                     boolean isFunction = previous != null && previous.getType() == TokenType.IDENT;
@@ -48,7 +51,9 @@ public final class ShuntingYardParser {
                         functionDepth++;
                     }
                     break;
+
                 case SEMICOLON:
+                    // function argument separator 
                     if (funcParens.isEmpty() || !funcParens.peek()) {
                         throw new FormulaException("Unexpected ';'");
                     }
@@ -58,7 +63,13 @@ public final class ShuntingYardParser {
                     }
                     argCounts.push(argCounts.pop() + 1);
                     break;
+
                 case RPAREN:
+                    // general logic for closing parenthesis
+                    // first collapse until left paren
+                    // then check if it was a function call
+                    // if so, pop function name and create function call node
+                    // otherwise just continue
                     collapseUntilLeftParen(operands, operators);
                     if (operators.isEmpty() || operators.peek().getType() != TokenType.LPAREN) {
                         throw new FormulaException("Missing '('");
@@ -66,11 +77,13 @@ public final class ShuntingYardParser {
                     operators.pop();
                     boolean wasFunction = funcParens.pop();
                     if (wasFunction) {
+
                         if (operators.isEmpty() || operators.peek().getType() != TokenType.IDENT) {
                             throw new FormulaException("Missing function name");
                         }
                         Token funcToken = operators.pop();
                         int argCount = argCounts.pop();
+
                         if (operands.size() < argCount) {
                             throw new FormulaException("Missing function argument");
                         }
@@ -82,13 +95,17 @@ public final class ShuntingYardParser {
                         functionDepth--;
                     }
                     break;
+
                 case COLON:
+                    // range operator
                     if (functionDepth == 0) {
                         throw new FormulaException("Range only allowed inside functions");
                     }
                     collapseByPrecedence(token, operands, operators);
                     operators.push(token);
                     break;
+                    
+                // same case for arithmetic operators
                 case PLUS:
                 case MINUS:
                 case MULTIPLY:
@@ -128,6 +145,8 @@ public final class ShuntingYardParser {
 
     private static void collapseUntilLeftParen(Stack<ExpressionNode> operands,
                                                Stack<Token> operators) {
+        // helper to collapse operators until left parenthesis is found 
+        // to make sure parentheses are handled correctly
         while (!operators.isEmpty() && operators.peek().getType() != TokenType.LPAREN) {
             Token op = operators.pop();
             applyOperator(op.getType(), operands);
@@ -137,6 +156,7 @@ public final class ShuntingYardParser {
     private static void collapseByPrecedence(Token incoming,
                                              Stack<ExpressionNode> operands,
                                              Stack<Token> operators) {
+        // helper to collapse operators based on precedence 
         while (!operators.isEmpty()
                 && isOperator(operators.peek().getType())
                 && precedence(operators.peek().getType()) >= precedence(incoming.getType())) {
@@ -146,6 +166,7 @@ public final class ShuntingYardParser {
     }
 
     private static void applyOperator(TokenType operator, Stack<ExpressionNode> operands) {
+        // helper to apply an operator to the top two operands
         if (operands.size() < 2) {
             throw new FormulaException("Missing operand");
         }

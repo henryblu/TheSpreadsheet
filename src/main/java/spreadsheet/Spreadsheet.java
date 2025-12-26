@@ -122,6 +122,9 @@ public class Spreadsheet implements CellLookup{
                     int colIndex = i + 1;
 
                     if (!content.isEmpty()) {
+                        if (content.startsWith("=")) {
+                            content = content.replace(",", ";");
+                        }
                         CellAddress address = new CellAddress(rowIndex, colIndex);
                         setCellContent(address, content);
                     }
@@ -169,7 +172,11 @@ public class Spreadsheet implements CellLookup{
 
                     CellAddress address = new CellAddress(r, c);
                     String content = getCellContent(address);
-                    line.append(content);
+                    if (content.startsWith("=")) {
+                        line.append(content.replace(";", ","));
+                    } else {
+                        line.append(content);
+                    }
                 }
 
                 writer.write(line.toString());

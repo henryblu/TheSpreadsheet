@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -207,5 +209,146 @@ class SpreadsheetTest {
         sheet.setCellContent(new CellAddress(1, 3), "=SUM(A1:B2;AVERAGE(A1:B2))");
 
         assertEquals("12.5", sheet.getCellDisplayValue(new CellAddress(1, 3)));
+    }
+
+    @Test
+    void numericStringsCanBeUsedAsNumbersInFormulas() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(a1, "1.5");
+        sheet.setCellContent(b1, "=A1+1");
+
+        assertEquals("2.5", sheet.getCellDisplayValue(b1));
+    }
+
+    @Test
+    void emptyTextShouldBehaveAsZeroInNumericContexts() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(a1, "");
+        sheet.setCellContent(b1, "=A1+1");
+
+        assertEquals("1.0", sheet.getCellDisplayValue(b1));
+    }
+
+    @Test
+    void nonNumericTextInFormulaCausesError() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(a1, "Hello");
+        sheet.setCellContent(b1, "=A1");
+
+        assertEquals("#ERR", sheet.getCellDisplayValue(b1));
+    }
+
+    @Test
+    void multiLetterColumnReferencesAreSupported() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress aa1 = new CellAddress(1, 27);
+        CellAddress b1 = new CellAddress(1, 2);
+
+        sheet.setCellContent(aa1, "7");
+        sheet.setCellContent(b1, "=AA1+1");
+
+        assertEquals("8.0", sheet.getCellDisplayValue(b1));
+    }
+
+    @Test
+    void rangesAllowReversedCorners() {
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.setCellContent(new CellAddress(1, 1), "1");  // A1
+        sheet.setCellContent(new CellAddress(2, 2), "4");  // B2
+
+        sheet.setCellContent(new CellAddress(1, 3), "=SUM(B2:A1)");
+
+        assertEquals("5.0", sheet.getCellDisplayValue(new CellAddress(1, 3)));
+    }
+
+    @Test
+    void rangeOutsideFunctionIsRejected() {
+        Spreadsheet sheet = new Spreadsheet();
+
+        assertThrows(FormulaException.class,
+                () -> sheet.setCellContent(new CellAddress(1, 1), "=A1:B2"));
+    }
+
+    @Test
+    void malformedFormulaIsRejectedOnSet() {
+        Spreadsheet sheet = new Spreadsheet();
+
+        assertThrows(FormulaException.class,
+                () -> sheet.setCellContent(new CellAddress(1, 1), "=1+"));
+    }
+
+    @Test
+    void indirectCircularReferenceIsRejected() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+        CellAddress c1 = new CellAddress(1, 3);
+
+        sheet.setCellContent(a1, "=B1");
+        sheet.setCellContent(b1, "=C1");
+
+        assertThrows(FormulaException.class, () -> sheet.setCellContent(c1, "=A1"));
+    }
+
+    @Test
+    void chainedDependentsRefreshWhenRootChanges() {
+        Spreadsheet sheet = new Spreadsheet();
+        CellAddress a1 = new CellAddress(1, 1);
+        CellAddress b1 = new CellAddress(1, 2);
+        CellAddress c1 = new CellAddress(1, 3);
+
+        sheet.setCellContent(a1, "1");
+        sheet.setCellContent(b1, "=A1+1");
+        sheet.setCellContent(c1, "=B1+1");
+
+        assertEquals("3.0", sheet.getCellDisplayValue(c1));
+
+        sheet.setCellContent(a1, "4");
+        assertEquals("6.0", sheet.getCellDisplayValue(c1));
+    }
+
+    @Test
+    void saveUsesCommaInsideFunctionArguments() throws IOException {
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.setCellContent(new CellAddress(1, 1), "=SUM(1;2;3)");
+
+        Path file = tempDir.resolve("functions.csv");
+        sheet.saveToFile(file.toString());
+
+        List<String> lines = Files.readAllLines(file);
+        assertEquals(1, lines.size());
+        assertEquals("=SUM(1,2,3)", lines.get(0));
+    }
+
+    @Test
+    void loadConvertsCommaBackToSemicolonInFunctions() throws IOException {
+        Path file = tempDir.resolve("load-functions.csv");
+        Files.writeString(file, "=SUM(1,2,3)\n");
+
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.loadFromFile(file.toString());
+
+        assertEquals("=SUM(1;2;3)", sheet.getCellContent(new CellAddress(1, 1)));
+        assertEquals("6.0", sheet.getCellDisplayValue(new CellAddress(1, 1)));
+    }
+
+    @Test
+    void formulasAreEvaluatedAfterLoading() throws IOException {
+        Path file = tempDir.resolve("load-formula.csv");
+        Files.writeString(file, "2;=A1+3\n");
+
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.loadFromFile(file.toString());
+
+        assertEquals("5.0", sheet.getCellDisplayValue(new CellAddress(1, 2)));
     }
 }

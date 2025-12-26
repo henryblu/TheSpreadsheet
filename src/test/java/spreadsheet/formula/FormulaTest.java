@@ -68,4 +68,32 @@ class FormulaTest {
             FormulaEvaluator.evaluate(node);
         });
     }
+
+    @Test
+    void parserRejectsUnexpectedSemicolon() {
+        List<Token> tokens = FormulaTokenizer.tokenize("1;2");
+
+        assertThrows(FormulaException.class, () -> ShuntingYardParser.parse(tokens));
+    }
+
+    @Test
+    void parserRejectsMissingClosingParen() {
+        List<Token> tokens = FormulaTokenizer.tokenize("(1+2");
+
+        assertThrows(FormulaException.class, () -> ShuntingYardParser.parse(tokens));
+    }
+
+    @Test
+    void parserRejectsFunctionWithoutArguments() {
+        List<Token> tokens = FormulaTokenizer.tokenize("SUM()");
+
+        assertThrows(FormulaException.class, () -> ShuntingYardParser.parse(tokens));
+    }
+
+    @Test
+    void parserRejectsRangeOutsideFunction() {
+        List<Token> tokens = FormulaTokenizer.tokenize("A1:B2");
+
+        assertThrows(FormulaException.class, () -> ShuntingYardParser.parse(tokens));
+    }
 }

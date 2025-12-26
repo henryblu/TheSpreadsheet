@@ -58,8 +58,12 @@ public class Cell {
     }
  
     private double parseLiteral(String text) {
+        String trimmed = text.trim();
+        if (trimmed.isEmpty()) {
+            return 0.0;
+        }
         try {
-            return Double.parseDouble(text);
+            return Double.parseDouble(trimmed);
         } catch (NumberFormatException ex) {
             throw new FormulaException("Referenced cell '" + addressString() + "' is not numeric", ex);
         }

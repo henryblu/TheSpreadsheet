@@ -1,46 +1,112 @@
 # TheSpreadsheet
 
-A minimal spreadsheet app with basic formula support. Source lives in `src/main/java`, tests live in `src/test/java`, and build output goes to `bin/` (or `out/` for VS Code).
+A minimal spreadsheet application with basic formula support.
 
-Documentation, deliverables, diagrams, and images are collected under `doc/`.
+* Java source: `src/main/java`
+* Tests: `src/test/java`
+* Build output: `target/` (or `out/` when using VS Code)
+* Documentation, diagrams, and images: `doc/`
 
-## Build and Test
+A browser-based demo is available via GitHub Pages and works fully standalone.
 
-1. Ensure Maven is installed and available on your `PATH` (`mvn -v` should work).
-2. Run the unit tests:
-   ```bash
-   mvn clean test
-   ```
-3. Build without running tests:
-   ```bash
-   mvn clean package -D skipTests
-   ```
+---
 
-## Running the CLI App
+## Build and Test (Java)
 
-After a Maven build, the compiled classes sit under `target/classes`. You can run the CLI entrypoint either from Maven:
+### Prerequisites
+
+* Maven installed and available on your `PATH`
+
+  ```bash
+  mvn -v
+  ```
+
+### Run tests
 
 ```bash
-mvn exec:java -D exec.mainClass=spreadsheet.Main
+mvn clean test
 ```
 
-or directly with `java` if you prefer manual compilation:
+### Build without tests
+
+```bash
+mvn clean package -DskipTests
+```
+
+---
+
+## Running the CLI Application
+
+After building, compiled classes are located in `target/classes`.
+
+### Run via Maven
+
+```bash
+mvn exec:java -Dexec.mainClass=spreadsheet.Main
+```
+
+### Run directly with Java
 
 ```bash
 java -cp target/classes spreadsheet.Main
 ```
 
-The previous manual workflow (`javac` into `bin/` and `java -cp bin spreadsheet.Main`) still works if you want to bypass Maven.
+The older manual workflow (`javac` → `bin/`) still works if you prefer to bypass Maven.
 
-## Running the Web Demo (UI)
+---
 
-The browser demo lives under `docs/` and loads `docs/data/sample.s2v`, so it must be served over HTTP (not opened via `file://`).
+## Web Demo (UI)
+
+The web UI is published via GitHub Pages and **requires no local setup** to review.
+Reviewers do **not** need Python, Maven, or Java to use the demo.
+
+The UI loads a sample file from `docs/data/sample.s2v` and runs entirely in the browser.
+
+---
+
+## Running the UI Locally (Optional)
+
+This is **only required if you want to modify the UI locally**.
+
+Because the UI loads data files via HTTP, it must be served from a local web server (it will not work via `file://`).
 
 ```bash
 cd docs
 python -m http.server 8000
 ```
 
-Then open `http://localhost:8000/` in your browser.
+Then open:
 
-If you change Java code that affects the demo, regenerate the TeaVM output and replace `docs/spreadsheet.js` with the new build.
+```
+http://localhost:8000/
+```
+
+Python is used **only** to serve static files during local development.
+
+---
+
+## Updating the Web Demo (TeaVM)
+
+This section is relevant **only if you change Java code that affects the web UI**.
+
+1. Build the Java project:
+
+   ```bash
+   mvn clean package -DskipTests
+   ```
+
+2. Run TeaVM using `spreadsheet.web.DemoEntry` as the entry point.
+   This produces:
+
+   ```
+   target/teavm/spreadsheet.js
+   ```
+
+3. Replace the GitHub Pages bundle:
+
+   ```bash
+   cp target/teavm/spreadsheet.js docs/spreadsheet.js
+   ```
+
+After this, the updated UI can be served locally or published via GitHub Pages.
+

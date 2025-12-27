@@ -11,6 +11,14 @@ A browser-based demo is available via GitHub Pages and works fully standalone.
 
 ---
 
+## Web Demo (UI)
+
+The web UI is published via GitHub Pages you can find the demo here: https://henryblu.github.io/TheSpreadsheet/
+
+The UI loads a sample file from `docs/data/sample.s2v` and runs entirely in the browser.
+
+---
+
 ## Build and Test (Java)
 
 ### Prerequisites
@@ -52,15 +60,6 @@ java -cp target/classes spreadsheet.Main
 ```
 
 The older manual workflow (`javac` → `bin/`) still works if you prefer to bypass Maven.
-
----
-
-## Web Demo (UI)
-
-The web UI is published via GitHub Pages and **requires no local setup** to review.
-Reviewers do **not** need Python, Maven, or Java to use the demo.
-
-The UI loads a sample file from `docs/data/sample.s2v` and runs entirely in the browser.
 
 ---
 

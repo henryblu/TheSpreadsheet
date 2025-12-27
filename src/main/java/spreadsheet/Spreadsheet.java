@@ -252,10 +252,10 @@ public class Spreadsheet implements CellLookup{
         int rowIndex = 1;
 
         while ((line = reader.readLine()) != null) {
-            String[] tokens = line.split(";", -1);
+            List<String> tokens = splitS2vLine(line);
 
-            for (int i = 0; i < tokens.length; i++) {
-                String content = tokens[i];
+            for (int i = 0; i < tokens.size(); i++) {
+                String content = tokens.get(i);
                 int colIndex = i + 1;
 
                 if (!content.isEmpty()) {
@@ -268,6 +268,32 @@ public class Spreadsheet implements CellLookup{
             }
             rowIndex++;
         }
+    }
+
+    private List<String> splitS2vLine(String line) {
+        // Split on semicolons, but ignore those inside function parentheses for loading edge case.
+        List<String> tokens = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        int parenDepth = 0;
+
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+            if (ch == '(') {
+                parenDepth++;
+            } else if (ch == ')' && parenDepth > 0) {
+                parenDepth--;
+            }
+
+            if (ch == ';' && parenDepth == 0) {
+                tokens.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(ch);
+            }
+        }
+
+        tokens.add(current.toString());
+        return tokens;
     }
 
     private void removeCellAndEdges(CellAddress address) {

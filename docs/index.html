@@ -21,12 +21,14 @@
           <p class="eyebrow">Spreadsheet Demo</p>
           <h1>TheSpreadsheet</h1>
           <p class="subhead">
-            Java engine compiled with TeaVM. UI is minimal, but the full formula
-            engine runs in the browser.
+            Simple demonstrations of a spreadsheet engine implemented in js.
           </p>
         </div>
         <div class="actions">
-          <button id="reset-demo" type="button">Reload sample.s2v</button>
+          <input id="file-input" type="file" accept=".s2v,text/plain" hidden />
+          <button id="new-sheet" type="button">New spreadsheet</button>
+          <button id="open-sheet" type="button">Open</button>
+          <button id="save-sheet" type="button">Save</button>
         </div>
       </header>
 

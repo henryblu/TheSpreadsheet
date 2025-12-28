@@ -35,12 +35,13 @@ public class Spreadsheet implements CellLookup{
         this.dependents = new HashMap<>();
     }
 
+    // Public API
     public int getRowCount() { return getMaxRow(); }
     public int getColumnCount() { return getMaxColumn(); }
 
     public void setCellContent(CellAddress address, String content) {
         // Sets the content of a cell, updating dependencies and checking for cycles
-        if (content == null) {
+        if (content == null || content.strip().isEmpty()) {
             removeCellAndEdges(address);
             refreshDependents(address);
             return;
@@ -66,6 +67,14 @@ public class Spreadsheet implements CellLookup{
         refreshDependents(address);
     }
 
+    public void setCellContent(String address, String content) {
+        setCellContent(CellAddress.parseA1(address), content);
+    }
+
+    public void setCellContentRC(int rowIndex, int columnIndex, String content) {
+        setCellContent(new CellAddress(rowIndex, columnIndex), content);
+    }
+
     public String getCellContent(CellAddress address) {
         // Returns the raw content of the cell
         Cell cell = cells.get(address);
@@ -75,26 +84,12 @@ public class Spreadsheet implements CellLookup{
         return cell.getContent();
     }
 
-    double resolveCellValue(int rowIndex, int columnIndex) {
-        // Resolves the numeric value of a referenced cell
-        CellAddress target = new CellAddress(rowIndex, columnIndex);
-        Cell targetCell = cells.get(target);
-        if (targetCell == null) {
-            throw new FormulaException("Referenced cell '" + columnLabel(columnIndex) + rowIndex + "' is empty");
-        }
-        return targetCell.evaluateNumericValue();
+    public String getCellContent(String address) {
+        return getCellContent(CellAddress.parseA1(address));
     }
 
-    private static String columnLabel(int column) {
-        // Converts a 1-based column index to its corresponding label (e.g., 1 -> A, 27 -> AA)
-        StringBuilder builder = new StringBuilder();
-        int current = column;
-        while (current > 0) {
-            int remainder = (current - 1) % 26;
-            builder.insert(0, (char) ('A' + remainder));
-            current = (current - 1) / 26;
-        }
-        return builder.toString();
+    public String getCellContentRC(int rowIndex, int columnIndex) {
+        return getCellContent(new CellAddress(rowIndex, columnIndex));
     }
 
     public String getCellDisplayValue(CellAddress address) {
@@ -106,6 +101,86 @@ public class Spreadsheet implements CellLookup{
         return cell.getDisplayValue();
     }
 
+    public String getCellDisplayValue(String address) {
+        return getCellDisplayValue(CellAddress.parseA1(address));
+    }
+
+    public String getCellDisplayValueRC(int rowIndex, int columnIndex) {
+        return getCellDisplayValue(new CellAddress(rowIndex, columnIndex));
+    }
+
+    public boolean isCellError(CellAddress address) {
+        // for the ui
+        Cell cell = cells.get(address);
+        if (cell == null) {
+            return false;
+        }
+        return "#ERR".equals(cell.getDisplayValue());
+    }
+
+    public boolean isCellError(String address) {
+        return isCellError(CellAddress.parseA1(address));
+    }
+
+    public boolean isCellErrorRC(int rowIndex, int columnIndex) {
+        return isCellError(new CellAddress(rowIndex, columnIndex));
+    }
+
+    public List<CellAddress> getNonEmptyCells() {
+        // helper for the ui
+        List<CellAddress> result = new ArrayList<>();
+        for (Map.Entry<CellAddress, Cell> entry : cells.entrySet()) {
+            String content = entry.getValue().getContent();
+            if (content != null && !content.isEmpty()) {
+                result.add(entry.getKey());
+            }
+        }
+        return result;
+    }
+
+    public String getNonEmptyCellAddresses() {
+        List<CellAddress> cells = getNonEmptyCells();
+        StringBuilder builder = new StringBuilder();
+        for (CellAddress address : cells) {
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append(address.toA1());
+        }
+        return builder.toString();
+    }
+
+    public double findCell(int rowIndex, int columnIndex) {
+        return resolveCellValue(rowIndex, columnIndex);
+    }
+
+    public OptionalDouble findCellOptional(int rowIndex, int columnIndex) {
+        CellAddress target = new CellAddress(rowIndex, columnIndex);
+        Cell targetCell = cells.get(target);
+        if (targetCell == null) {
+            return OptionalDouble.empty();
+        }
+        String content = targetCell.getContent();
+        if (content == null || content.strip().isEmpty()) {
+            return OptionalDouble.empty();
+        }
+        return OptionalDouble.of(targetCell.evaluateNumericValue());
+    }
+
+    // API / evaluation interface
+    double resolveCellValue(int rowIndex, int columnIndex) {
+        // Resolves the numeric value of a referenced cell
+        CellAddress target = new CellAddress(rowIndex, columnIndex);
+        Cell targetCell = cells.get(target);
+        if (targetCell == null) {
+            // Create a blank cell on first reference so empty cells behave as zero in numeric contexts.
+            targetCell = new Cell(this, target, "");
+            cells.put(target, targetCell);
+        }
+        return targetCell.evaluateNumericValue();
+    }
+
+    // Persistence
     public void loadFromFile(String filename) throws IOException {
         // load the spreadsheet from a s2v file
         resetState();
@@ -126,49 +201,6 @@ public class Spreadsheet implements CellLookup{
         } catch (IOException ex) {
             throw new IllegalStateException("Unexpected I/O while reading S2V data", ex);
         }
-    }
-
-    public boolean isCellError(CellAddress address) {
-        // for the ui
-        Cell cell = cells.get(address);
-        if (cell == null) {
-            return false;
-        }
-        return "#ERR".equals(cell.getDisplayValue());
-    }
-
-    public List<CellAddress> getNonEmptyCells() {
-        // helper for the ui
-        List<CellAddress> result = new ArrayList<>();
-        for (Map.Entry<CellAddress, Cell> entry : cells.entrySet()) {
-            String content = entry.getValue().getContent();
-            if (content != null && !content.isEmpty()) {
-                result.add(entry.getKey());
-            }
-        }
-        return result;
-    }
-
-    private int getMaxRow() {
-        // helper for saveToFile to determine max row
-        int max = 0;
-        for (CellAddress addr : cells.keySet()) {
-            if (addr.getRow() > max) {
-                max = addr.getRow();
-            }
-        }
-        return max;
-    }
-
-    private int getMaxColumn() {
-        // helper for saveToFile to determine max column
-        int max = 0;
-        for (CellAddress addr : cells.keySet()) {
-            if (addr.getColumn() > max) {
-                max = addr.getColumn();
-            }
-        }
-        return max;
     }
 
     public void saveToFile(String filename) throws IOException {
@@ -197,46 +229,6 @@ public class Spreadsheet implements CellLookup{
                 writer.write(line.toString());
                 writer.newLine();
             }
-        }
-    }
-
-    private Set<CellAddress> collectDependencies(String content) {
-        // Collect cell references from the formula content
-        if (content == null) {
-            return Set.of();
-        }
-        String trimmed = content.stripLeading();
-        if (!trimmed.startsWith("=")) {
-            return Set.of();
-        }
-        String formula = trimmed.substring(1);
-        List<Token> tokens = FormulaTokenizer.tokenize(formula);
-        ExpressionNode ast = ShuntingYardParser.parse(tokens);
-        return ReferenceCollector.collect(ast);
-    }
-
-    private void updateDependencies(CellAddress address,
-                                    Set<CellAddress> oldDeps,
-                                    Set<CellAddress> newDeps) {
-        // Update the dependency graph when changing cell content
-        for (CellAddress dep : oldDeps) {
-            Set<CellAddress> reverse = dependents.get(dep);
-            if (reverse != null) {
-                reverse.remove(address);
-                if (reverse.isEmpty()) {
-                    dependents.remove(dep);
-                }
-            }
-        }
-
-        if (newDeps.isEmpty()) {
-            dependencies.remove(address);
-        } else {
-            dependencies.put(address, new HashSet<>(newDeps));
-        }
-
-        for (CellAddress dep : newDeps) {
-            dependents.computeIfAbsent(dep, key -> new HashSet<>()).add(address);
         }
     }
 
@@ -296,6 +288,83 @@ public class Spreadsheet implements CellLookup{
         return tokens;
     }
 
+    private int getMaxRow() {
+        // helper for saveToFile to determine max row
+        int max = 0;
+        for (Map.Entry<CellAddress, Cell> entry : cells.entrySet()) {
+            // because of the way empty referenced cells work
+            // if you referred to a far out cell (eg D2000) and saved the file,
+            // the spreadsheet would save all the empty cells before it
+            // to fix this we only consider non-empty cells for max calculations
+            String content = entry.getValue().getContent();
+            if (content == null || content.isEmpty()) {
+                continue;
+            }
+            int row = entry.getKey().getRow();
+            if (row > max) {
+                max = row;
+            }
+        }
+        return max;
+    }
+
+    private int getMaxColumn() {
+        // helper for saveToFile to determine max column
+        int max = 0;
+        for (Map.Entry<CellAddress, Cell> entry : cells.entrySet()) {
+            String content = entry.getValue().getContent();
+            if (content == null || content.isEmpty()) {
+                continue;
+            }
+            int column = entry.getKey().getColumn();
+            if (column > max) {
+                max = column;
+            }
+        }
+        return max;
+    }
+
+    // Dependency graph
+    private Set<CellAddress> collectDependencies(String content) {
+        // Collect cell references from the formula content
+        if (content == null) {
+            return Set.of();
+        }
+        String trimmed = content.stripLeading();
+        if (!trimmed.startsWith("=")) {
+            return Set.of();
+        }
+        String formula = trimmed.substring(1);
+        List<Token> tokens = FormulaTokenizer.tokenize(formula);
+        ExpressionNode ast = ShuntingYardParser.parse(tokens);
+        return ReferenceCollector.collect(ast);
+    }
+
+    private void updateDependencies(CellAddress address,
+                                    Set<CellAddress> oldDeps,
+                                    Set<CellAddress> newDeps) {
+        // Update the dependency graph when changing cell content
+        for (CellAddress dep : oldDeps) {
+            Set<CellAddress> reverse = dependents.get(dep);
+            if (reverse != null) {
+                reverse.remove(address);
+                if (reverse.isEmpty()) {
+                    dependents.remove(dep);
+                }
+            }
+        }
+
+        if (newDeps.isEmpty()) {
+            dependencies.remove(address);
+        } else {
+            dependencies.put(address, new HashSet<>(newDeps));
+        }
+
+        for (CellAddress dep : newDeps) {
+            dependents.computeIfAbsent(dep, key -> new HashSet<>()).add(address);
+        }
+    }
+
     private void removeCellAndEdges(CellAddress address) {
         // Added to remove the cell and its dependencies
         cells.remove(address);
@@ -349,22 +418,5 @@ public class Spreadsheet implements CellLookup{
                 }
             }
         }
-    }
-    
-    public double findCell(int rowIndex, int columnIndex) {
-        return resolveCellValue(rowIndex, columnIndex);
-    }
-
-    public OptionalDouble findCellOptional(int rowIndex, int columnIndex) {
-        CellAddress target = new CellAddress(rowIndex, columnIndex);
-        Cell targetCell = cells.get(target);
-        if (targetCell == null) {
-            return OptionalDouble.empty();
-        }
-        String content = targetCell.getContent();
-        if (content == null || content.strip().isEmpty()) {
-            return OptionalDouble.empty();
-        }
-        return OptionalDouble.of(targetCell.evaluateNumericValue());
     }
 }

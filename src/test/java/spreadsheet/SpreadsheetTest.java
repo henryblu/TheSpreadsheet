@@ -98,7 +98,7 @@ class SpreadsheetTest {
 
         sheet.setCellContent(b1, "=A1");
 
-        assertEquals("#ERR", sheet.getCellDisplayValue(b1));
+        assertEquals("0.0", sheet.getCellDisplayValue(b1));
         sheet.setCellContent(a1, "5");
         sheet.setCellContent(b1, "=A1");
         assertEquals("5.0", sheet.getCellDisplayValue(b1));
@@ -118,6 +118,20 @@ class SpreadsheetTest {
 
         assertEquals("Hello", loaded.getCellContent(new CellAddress(1, 1)));
         assertEquals("42", loaded.getCellContent(new CellAddress(2, 2)));
+    }
+
+    @Test
+    void saveDoesNotExpandForReferencedEmptyCells() throws IOException {
+        // made this test to check that saving does not expand the spreadsheet unnecessarily
+        Spreadsheet sheet = new Spreadsheet();
+        sheet.setCellContent(new CellAddress(1, 1), "=Z100");
+
+        Path file = tempDir.resolve("references.csv");
+        sheet.saveToFile(file.toString());
+
+        List<String> lines = Files.readAllLines(file);
+        assertEquals(1, lines.size());
+        assertEquals("=Z100", lines.get(0));
     }
 
     @Test

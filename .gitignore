@@ -3,11 +3,7 @@
 *.class
 /target/
 
-# IDE 
-*.iml
-*.puml
-*.drawio
-*.xml
+
 
 # local libraries
 /lib/*.jar

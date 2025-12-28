@@ -70,17 +70,6 @@ public class Cell {
     }
 
     private String addressString() {
-        return columnLabel(address.getColumn()) + address.getRow();
-    }
-
-    private static String columnLabel(int column) {
-        StringBuilder builder = new StringBuilder();
-        int current = column;
-        while (current > 0) {
-            int remainder = (current - 1) % 26;
-            builder.insert(0, (char) ('A' + remainder));
-            current = (current - 1) / 26;
-        }
-        return builder.toString();
+        return CellAddress.columnLabel(address.getColumn()) + address.getRow();
     }
 }
